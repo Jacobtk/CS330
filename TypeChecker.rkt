@@ -1,5 +1,157 @@
 #lang plai
 
+
+(define-type Expr
+  [num (n number?)]
+  [id (v symbol?)]
+  [bool (b boolean?)]
+  [bin-num-op (op procedure?) (lhs Expr?) (rhs Expr?)]
+  [iszero (e Expr?)]
+  [bif (test Expr?) (then Expr?) (else Expr?)]
+  [with (bound-id symbol?) (bound-body Expr?) (body Expr?)]
+  [fun (arg-id symbol?)
+       (arg-type Type?) (result-type Type?)
+       (body Expr?)]
+  [app (fun-expr Expr?) (arg-expr Expr?)]
+  [nempty]
+  [ncons (first Expr?) (rest Expr?)]
+  [nfirst (e Expr?)]
+  [nrest (e Expr?)]
+  [isnempty (e Expr?)])
+ 
+(define-type Type
+  [t-num]
+  [t-bool]
+  [t-nlist]
+  [t-fun (arg Type?) (result Type?)])
+ 
+; parse : s-expression -> Expr
+(define (parse sexp)
+  (cond
+    [(number? sexp) 
+     (num sexp)]
+    [(symbol? sexp) 
+     (if (or (symbol=? 'with sexp) (symbol=? '+ sexp) (symbol=? '- sexp)
+             (symbol=? '* sexp) (symbol=? '/ sexp) (symbol=? 'if0 sexp)
+             (symbol=? 'fun sexp))
+         (error 'parse "Invalid syntax")
+         (id sexp))]
+    [(list? sexp)
+     (if (empty? sexp)
+         (nempty)
+         (cond
+           [(procedure? (lookup-op (first sexp)))
+            (if (and (equal? (length sexp) 3)
+                     (Expr? (parse (second sexp)))
+                     (Expr? (parse (third sexp))))
+                (binop (lookup-op (first sexp)) (parse (second sexp)) (parse (third sexp)))
+                (error 'parse "Invalid syntax"))]
+           [(symbol? (first sexp))
+            (cond
+              [(symbol=? 'with (first sexp))
+               (if (and (equal? (length sexp) 3)
+                        (list? (second sexp))
+                        (list? (parse-bindings (second sexp)))
+                        (not (multipleBindings? (second sexp)))
+                        (Expr? (parse (third sexp))))
+                   (with (parse-bindings (second sexp)) (parse (third sexp)))
+                   (error 'parse "Invalid syntax"))]
+              [(symbol=? 'bif (first sexp))
+               (if (and (equal? (length sexp) 4)
+                        (Expr? (parse (second sexp)))
+                        (Expr? (parse (third sexp)))
+                        (Expr? (parse (fourth sexp))))
+                   (bif (parse (second sexp)) (parse (third sexp)) (parse (fourth sexp)))
+                   (error 'parse "Invalid syntax"))]
+              [(symbol=? 'fun (first sexp))
+               (if (and (equal? (length sexp) 3)
+                        (list? (second sexp))
+                        (andmap symbol? (second sexp))
+                        (not (multipleBindingsFun? (second sexp)))
+                        (Expr? (parse (third sexp))))
+                   (fun (second sexp) (parse (third sexp))) ;create fun object
+                   (error 'parse "Invalid syntax"))]
+              [else
+               (if (andmap (lambda (x) (CFWAE? (parse x))) sexp)
+                   (app (parse (first sexp)) (map parse (rest sexp)))
+                   (error 'parse "Invalid syntax"))])]
+           [else
+            (if (andmap (lambda (x) (CFWAE? (parse x))) sexp)
+                (app (parse (first sexp)) (map parse (rest sexp)))
+                (error 'parse "Invalid syntax"))]
+           ))]
+    [else
+     (error 'parse "Invalid syntax")]))
+ 
+; type-of : Expr -> Type
+(define (type-of e)
+  (cond
+    [(num? e)
+     (t-num)
+     ]
+    [(id? e)
+     ;type check the id
+     ]
+    [(bool? e)
+     (t-boolean)
+     ]
+    [(iszero? e)
+     ;check if is a bool
+     ;recurse on e checking if the exp has a num
+     (t-bool)
+     ]
+    [(bif? e)
+     ;check if is a bool
+     ;recurse on e checking if the first exp is a bool
+     ;second and third exp are equal return type of second
+     ]
+    [(with? e)
+     ;recurse on the third expr,(the body) 
+     ;check second that ID tied to exp, that ID type should be taken in of body of with
+     ]
+    [(fun? e)
+     ;using the paremeter type in the body results in the specificed return type
+     ;return type matchs the body's return type
+     ]
+    [(app? e)
+     ;make sure parm type passed in matchs the expected
+     ;return type matchs the body's return type
+     ]
+    [(nempty? e)
+     (t-nlist)
+     ]
+    [(ncons? e)
+     ;recurse on the first item
+     ;if all is well returns nlist
+     ]
+    [(nfirst? e)
+     ;input should be a list 
+     ;recurse on the item in the list and return that type
+     ]
+    [(nrest? e)
+     ;input should be a list
+     ;should be nlist if all is well
+     ]
+    [(isnempty? e)
+     ;make sure input is a list
+     ;output is a t-bool
+     ]
+     )
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 (define-type Binding
   [binding (name symbol?) (named-expr CFWAE?)])
 
@@ -95,61 +247,7 @@
 ;; parse : sexp −> CFWAE
 ;; to convert s-expressions into CFWAEs
 (define (parse sexp)
-  (cond
-    [(number? sexp) 
-     (num sexp)]
-    [(symbol? sexp) 
-     (if (or (symbol=? 'with sexp) (symbol=? '+ sexp) (symbol=? '- sexp)
-             (symbol=? '* sexp) (symbol=? '/ sexp) (symbol=? 'if0 sexp)
-             (symbol=? 'fun sexp))
-         (error 'parse "Invalid syntax")
-         (id sexp))]
-    [(list? sexp)
-     (if (empty? sexp)
-         (error 'parse "Invalid syntax")
-         (cond
-           [(procedure? (lookup-op (first sexp)))
-            (if (and (equal? (length sexp) 3)
-                     (CFWAE? (parse (second sexp)))
-                     (CFWAE? (parse (third sexp))))
-                (binop (lookup-op (first sexp)) (parse (second sexp)) (parse (third sexp)))
-                (error 'parse "Invalid syntax"))]
-           [(symbol? (first sexp))
-            (cond
-              [(symbol=? 'with (first sexp))
-               (if (and (equal? (length sexp) 3)
-                        (list? (second sexp))
-                        (list? (parse-bindings (second sexp)))
-                        (not (multipleBindings? (second sexp)))
-                        (CFWAE? (parse (third sexp))))
-                   (with (parse-bindings (second sexp)) (parse (third sexp)))
-                   (error 'parse "Invalid syntax"))]
-              [(symbol=? 'if0 (first sexp))
-               (if (and (equal? (length sexp) 4)
-                        (CFWAE? (parse (second sexp)))
-                        (CFWAE? (parse (third sexp)))
-                        (CFWAE? (parse (fourth sexp))))
-                   (if0 (parse (second sexp)) (parse (third sexp)) (parse (fourth sexp)))
-                   (error 'parse "Invalid syntax"))]
-              [(symbol=? 'fun (first sexp))
-               (if (and (equal? (length sexp) 3)
-                        (list? (second sexp))
-                        (andmap symbol? (second sexp))
-                        (not (multipleBindingsFun? (second sexp)))
-                        (CFWAE? (parse (third sexp))))
-                   (fun (second sexp) (parse (third sexp))) ;create fun object
-                   (error 'parse "Invalid syntax"))]
-              [else
-               (if (andmap (lambda (x) (CFWAE? (parse x))) sexp)
-                   (app (parse (first sexp)) (map parse (rest sexp)))
-                   (error 'parse "Invalid syntax"))])]
-           [else
-            (if (andmap (lambda (x) (CFWAE? (parse x))) sexp)
-                (app (parse (first sexp)) (map parse (rest sexp)))
-                (error 'parse "Invalid syntax"))]
-           ))]
-    [else
-     (error 'parse "Invalid syntax")]))
+  )
 
 ;PARSER TESTS
 ;id not +
