@@ -134,14 +134,15 @@
 (define (type-of-rec e env) ;make a recursive helper fun that takes an empty type env
   (cond
     [(num? e)
-     (t-num)
-     ]
+     (t-num)]
     [(id? e)
-     ;look up the id in the env and return its type
-     ]
+     (type-case Expr e
+       [id (v) (lookup v env)]
+       [else 
+        (error 'type-of "casting to symbol error")]
+         )]
     [(bool? e)
-     (t-bool)
-     ]
+     (t-bool)]
     [(bin-num-op? e)
      (if (and (equal? (type-of-rec (bin-num-op-lhs e) env) (t-num))
               (equal? (type-of-rec (bin-num-op-rhs e) env) (t-num)))
@@ -155,15 +156,16 @@
      (if (and (t-bool? (type-of-rec (bif-test e) env))
               (equal? (type-of-rec (bif-then e) env) (type-of-rec (bif-else e) env)))
          (type-of-rec (bif-then e) env)
-         (error 'type-of "error type checking bif"))
-     ]
+         (error 'type-of "error type checking bif"))]
     [(with? e)
      ;bind the var to its type
-     (binding (with-bound-id e) (type-of-rec (with-bound-body e) env))
+     ;(binding (with-bound-id e) (type-of-rec (with-bound-body e) env))
      ;exntend the env by adding the freshly created binding
+     (type-of-rec (with-body e) (anEnv (with-bound-id e) (type-of-rec (with-bound-body e) env) env))
+     ;call (type-of-rec (with-body e) env)
      ]
     [(fun? e)
-     
+ 
      ;using the paremeter type in the body results in the specificed return type
      ;return type matchs the body's return type
      ]
@@ -200,7 +202,9 @@
 
 
 
-(type-of (parse '(with{x 5} x)))
+
+(test/exn (type-of (parse '(with{x 5} y))) "no binding")
+(test (type-of (parse '(with{x 5} x))) (t-num))
 
 ;TESTS
 ;correct typing of num
