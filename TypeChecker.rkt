@@ -203,8 +203,6 @@
 
 
 
-(test/exn (type-of (parse '(with{x 5} y))) "no binding")
-(test (type-of (parse '(with{x 5} x))) (t-num))
 
 ;TESTS
 ;correct typing of num
@@ -252,8 +250,16 @@
 ;DIFFERENT TYPES OF t-fun?
 
 ;WITH
+(test/exn (type-of (parse '(with{x 5} y))) "no binding")
+(test (type-of (parse '(with{x 5} x))) (t-num))
+
 ;FUN
+;correct typing of fun
+;incorrect typing of fun
+
 ;APP
+;correct typing of fun
+;incorrect typing of fun
 
 ;NCONS
 ;correct typing of ncons
@@ -261,11 +267,11 @@
 ;ncons first param is incorrect
 (test/exn (type-of (parse '(ncons true nempty))) "error type checking ncons")
 (test/exn (type-of (parse '(ncons nempty nempty))) "error type checking ncons")
-;CLOSURE CASE
+(test/exn (type-of (parse '(ncons (fun x t-num t-num x) nempty))) "error type checking ncons")
 ;ncons second param is incorrect
 (test/exn (type-of (parse '(ncons 4 4))) "error type checking ncons")
 (test/exn (type-of (parse '(ncons 4 false))) "error type checking ncons")
-;CLOSURE CASE
+(test/exn (type-of (parse '(ncons 4 (fun x t-nlist t-nlist nempty)))) "error type checking ncons")
 
 ;NFIRST
 ;correct typing of nfirst on list
@@ -274,7 +280,7 @@
 ;incorrect nfirst typing
 (test/exn (type-of (parse '(nfirst 4))) "error type checking nfirst")
 (test/exn (type-of (parse '(nfirst true))) "error type checking nfirst")
-;CLOSURE CASE
+(test/exn (type-of (parse '(nfirst (fun x t-nlist t-nlist nempty)))) "error type checking nfirst")
 
 ;NREST
 ;correct typing of nrest
@@ -283,7 +289,7 @@
 ;incorrect nrest typing
 (test/exn (type-of (parse '(nrest 3))) "error type checking nrest")
 (test/exn (type-of (parse '(nrest false))) "error type checking nrest")
-;CLOSURE CASE
+(test/exn (type-of (parse '(nrest (fun x t-nlist t-nlist nempty)))) "error type checking nrest")
 
 ;ISNEMPTY
 ;correct typing of isnempty
@@ -292,7 +298,7 @@
 ;incorrect isnempty typing
 (test/exn (type-of (parse '(isnempty 4))) "error type checking isnempty")
 (test/exn (type-of (parse '(isnempty false))) "error type checking isnempty")
-;CLOSURE CASE
+(test/exn (type-of (parse '(isnempty (fun x t-nlist t-nlist nempty)))) "error type checking isnempty")
 
 
 
