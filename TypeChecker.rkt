@@ -24,6 +24,17 @@
   [t-bool]
   [t-nlist]
   [t-fun (arg Type?) (result Type?)])
+
+;op-table used to define the valid operations for binop
+(define op-table
+  (list (list '+ +) (list '- -) (list '* *)))
+
+;(lookup-op op) -> (or/c procedure? false/c)
+; op : symbol?
+(define (lookup-op op)
+  (if (list? (assoc op op-table))
+      (second (assoc op op-table))
+      false))
  
 ; parse : s-expression -> Expr
 (define (parse sexp)
@@ -39,6 +50,8 @@
             (bool true)]
            [(symbol=? 'false sexp)
             (bool false)]
+           [(symbol=? 'nempty sexp)
+            (nempty)]
            [else
             (id sexp)])]
     [(list? sexp)
@@ -79,19 +92,15 @@
               [(symbol=? 'iszero (first sexp))
                (iszero (parse (second sexp)))]               
               [(symbol=? 'ncons (first sexp))
-               (ncons (parse (second sexp)) (parse (third sexp)))
-               ]
+               (ncons (parse (second sexp)) (parse (third sexp)))]
               [(symbol=? 'nfirst (first sexp))
                (nfirst (parse (second sexp)))]
               [(symbol=? 'nrest (first sexp))
-               (nrest (parse (second sexp)))
-               ]
+               (nrest (parse (second sexp)))]
               [(symbol=? 'nempty (first sexp))
-               (nempty)
-               ]
+               (nempty)]
               [(symbol=? 'isnempty (first sexp))
-               (isnempty (parse (second sexp)))
-               ]
+               (isnempty (parse (second sexp)))]
               [else
                (if (andmap (lambda (x) (Expr? (parse x))) sexp)
                    (app (parse (first sexp)) (map parse (rest sexp)))
@@ -116,6 +125,11 @@
     [(bool? e)
      (t-bool)
      ]
+    [(bin-num-op? e)
+     (if (and (equal? (type-of (bin-num-op-lhs e)) (t-num))
+              (equal? (type-of (bin-num-op-rhs e)) (t-num)))
+         (t-num)
+         (error 'type-of "error in typing of bin-num-op"))]
     [(iszero? e)
      (if (t-num? (type-of (iszero-e e)))
          (t-bool)
@@ -150,7 +164,7 @@
      ]
     [(nfirst? e)
      (if (t-nlist? (type-of (nfirst-e e)))
-         (type-of (ncons-first (nfirst-e e)))
+         (t-num)
          (error 'type-of "error type checking nfirst"))
      ]
     [(nrest? e)
@@ -169,10 +183,31 @@
 
 
 
+;TESTS
+;correct typing of num
+(test (type-of (parse 2)) (t-num))
+;correct typing of bools
+(test (type-of (parse 'true)) (t-bool))
+(test (type-of (parse 'false)) (t-bool))
+;correct typing of empty list
+(test (type-of (parse '())) (t-nlist))
+(test (type-of (parse 'nempty)) (t-nlist))
+(test (type-of (parse '(nempty))) (t-nlist))
+;correct typing of bin-op expressions
+(test (type-of (parse '(+ 2 3))) (t-num))
+(test (type-of (parse '(- 4 5))) (t-num))
+(test (type-of (parse '(* 1 2))) (t-num))
+;error catching for bin-op expressions
+(test/exn (type-of (parse '(+ nempty 4))) "error in typing of bin-num-op")
+(test/exn (type-of (parse '(- 5 true))) "error in typing of bin-num-op")
 
-
-
-
+;correct typing of ncons
+(test (type-of (parse '(ncons 3 nempty))) (t-nlist))
+;correct typing of nfirst on empty list
+(test (type-of (parse '(nfirst nempty))) (t-num))
+;correct typing of nfirst on a cons
+(test (type-of (parse '(nfirst (ncons 3 nempty)))) (t-num))
+;correct typing of nrest
 
 
 
@@ -192,16 +227,7 @@
 
 
 
-;op-table used to define the valid operations for binop
-(define op-table
-  (list (list '+ +) (list '- -) (list '* *)))
 
-;(lookup-op op) -> (or/c procedure? false/c)
-; op : symbol?
-(define (lookup-op op)
-  (if (list? (assoc op op-table))
-      (second (assoc op op-table))
-      false))
 
 ;(parse-bindings (listof list?)) -> (listof Binding?)
 ; takes a list of lists and creates a list of bindings
