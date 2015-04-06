@@ -95,9 +95,9 @@
            [(symbol? (first sexp))
             (cond
               [(symbol=? 'with (first sexp))  ;change to reflect new with 
-               (with (first (second sexp))
-                     (parse (second (second sexp)))
-                     (parse (third sexp)))]
+               (with (second sexp)
+                     (parse (third sexp))
+                     (parse (fourth sexp)))]
               [(symbol=? 'bif (first sexp))
                (if (and (equal? (length sexp) 4)
                         (Expr? (parse (second sexp)))
@@ -256,8 +256,8 @@
 ;DIFFERENT TYPES OF t-fun?
 
 ;WITH
-(test/exn (type-of (parse '(with{x 5} y))) "no binding")
-(test (type-of (parse '(with{x 5} x))) (t-num))
+(test/exn (type-of (parse '(with x 5 y))) "no binding")
+(test (type-of (parse '(with x 5 x))) (t-num))
 
 ;FUN
 ;correct typing of fun
