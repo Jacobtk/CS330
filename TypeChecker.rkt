@@ -31,11 +31,16 @@
     [(number? sexp) 
      (num sexp)]
     [(symbol? sexp) 
-     (if (or (symbol=? 'with sexp) (symbol=? '+ sexp) (symbol=? '- sexp)
+     (cond [(or (symbol=? 'with sexp) (symbol=? '+ sexp) (symbol=? '- sexp)
              (symbol=? '* sexp) (symbol=? '/ sexp) (symbol=? 'bif sexp)
              (symbol=? 'fun sexp))
-         (error 'parse "Invalid syntax")
-         (id sexp))]
+            (error 'parse "Invalid syntax")]
+           [(symbol=? 'true sexp)
+            (bool true)]
+           [(symbol=? 'false sexp)
+            (bool false)]
+           [else
+            (id sexp)])]
     [(list? sexp)
      (if (empty? sexp)
          (nempty)
