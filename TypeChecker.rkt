@@ -73,7 +73,7 @@
             (id sexp)])]
     [(list? sexp)
      (if (empty? sexp)
-         (nempty)
+         (error 'parse "Invalid syntax")
          (cond
            [(procedure? (lookup-op (first sexp)))
             (if (and (equal? (length sexp) 3)
@@ -110,8 +110,6 @@
                (nfirst (parse (second sexp)))]
               [(symbol=? 'nrest (first sexp))
                (nrest (parse (second sexp)))]
-              [(symbol=? 'nempty (first sexp))
-               (nempty)]
               [(symbol=? 'isnempty (first sexp))
                (isnempty (parse (second sexp)))]
               [else
@@ -210,9 +208,7 @@
 (test (type-of (parse 'true)) (t-bool))
 (test (type-of (parse 'false)) (t-bool))
 ;correct typing of empty list
-(test (type-of (parse '())) (t-nlist))
 (test (type-of (parse 'nempty)) (t-nlist))
-(test (type-of (parse '(nempty))) (t-nlist))
 ;correct typing of bin-op expressions
 (test (type-of (parse '(+ 2 3))) (t-num))
 (test (type-of (parse '(- 4 5))) (t-num))
