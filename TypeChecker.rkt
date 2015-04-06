@@ -53,6 +53,17 @@
       (second (assoc op op-table))
       false))
 
+;parses a symbol into a Type
+(define (parse-type sym)
+  (cond [(symbol=? sym 't-num)
+         (t-num)]
+        [(symbol=? sym 't-bool)
+         (t-bool)]
+        [(symbol=? sym 't-nlist)
+         (t-nlist)]
+        [else
+         (error 'parse-type "haven't implemented this function for t-fun type")]))
+
 ; parse : s-expression -> Expr
 (define (parse sexp)
   (cond
@@ -95,13 +106,7 @@
                    (bif (parse (second sexp)) (parse (third sexp)) (parse (fourth sexp)))
                    (error 'parse "Invalid syntax"))]
               [(symbol=? 'fun (first sexp))
-               (if (and (equal? (length sexp) 3)
-                        (list? (second sexp))
-                        (andmap symbol? (second sexp))
-                        (not (multipleBindingsFun? (second sexp)))
-                        (Expr? (parse (third sexp))))
-                   (fun (second sexp) (parse (third sexp))) ;create fun object
-                   (error 'parse "Invalid syntax"))]
+               (fun (second sexp) (parse-type (third sexp)) (parse-type (fourth sexp)) (parse (fifth sexp)))]
               [(symbol=? 'iszero (first sexp))
                (iszero (parse (second sexp)))]               
               [(symbol=? 'ncons (first sexp))
@@ -165,9 +170,10 @@
      ;call (type-of-rec (with-body e) env)
      ]
     [(fun? e)
- 
-     ;using the paremeter type in the body results in the specificed return type
-     ;return type matchs the body's return type
+     (if (equal? (fun-result-type e)
+                 (type-of-rec (fun-body e) (anEnv (fun-arg-id e) (fun-arg-type e) env)))
+         (t-fun (fun-arg-type e) (fun-result-type e))
+         (error 'type-of "error type checking fun"))
      ]
     [(app? e)
      (if (and (t-fun? (type-of-rec (app-fun-expr e) env))
