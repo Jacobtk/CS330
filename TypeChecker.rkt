@@ -151,12 +151,11 @@
      (if (t-num? (type-of-rec (iszero-e e) env))
          (t-bool)
          (error 'type-of "expression for iszero did not evaluate to a number"))]
-    
     [(bif? e)
      (if (and (t-bool? (type-of-rec (bif-test e) env))
               (equal? (type-of-rec (bif-then e) env) (type-of-rec (bif-else e) env)))
          (type-of-rec (bif-then e) env)
-         (error 'type-of "problem type checking bif"))
+         (error 'type-of "error type checking bif"))
      ]
     [(with? e)
      ;bind the var to its type
@@ -178,8 +177,10 @@
      (t-nlist)
      ]
     [(ncons? e)
-     (t-nlist)
-     ]
+     (if (and (t-num? (type-of-rec (ncons-first e) env))
+              (t-nlist? (type-of-rec (ncons-rest e) env)))
+         (t-nlist)
+         (error 'type-of "error type checking ncons"))]
     [(nfirst? e)
      (if (t-nlist? (type-of-rec (nfirst-e e) env))
          (t-num)
@@ -220,10 +221,32 @@
 (test/exn (type-of (parse '(* 4 nempty))) "error in typing of bin-num-op")
 (test/exn (type-of (parse '(- 5 true))) "error in typing of bin-num-op")
 (test/exn (type-of (parse '(* false 6))) "error in typing of bin-num-op")
-;test bin-num-op with closure as parameters
+;test bin-num-op with t-fun as parameters
+(test/exn (type-of (parse '(+ (fun x t-bool t-num (bif x 1 0)) 4))) "error in typing of bin-num-op")
+(test/exn (type-of (parse '(+ 3 (fun x t-bool t-num (bif x 1 0))))) "error in typing of bin-num-op")
 
 ;ISZERO
+;correct typing of iszero
+(test (type-of (parse '(iszero 0))) (t-bool))
+(test (type-of (parse '(iszero 7))) (t-bool))
+;incorrect typing of iszero
+(test/exn (type-of (parse '(iszero false))) "iszero")
+(test/exn (type-of (parse '(iszero nempty))) "iszero")
+(test/exn (type-of (parse '(iszero (fun x t-num t-num x)))) "iszero")
+
 ;BIF
+;correct typing of bif
+(test (type-of (parse '(bif true 4 5))) (t-num))
+(test (type-of (parse '(bif true false true))) (t-bool))
+(test (type-of (parse '(bif false nempty (ncons 4 nempty)))) (t-nlist))
+(test (type-of (parse '(bif true (fun x t-num t-num (+ x 1)) (fun y t-num t-num (- y 1))))) (t-fun (t-num) (t-num)))
+;incorrect typing of bif
+(test/exn (type-of (parse '(bif 4 3 2))) "error type checking bif")
+(test/exn (type-of (parse '(bif nempty 0 1))) "error type checking bif")
+(test/exn (type-of (parse '(bif (fun x t-bool t-bool x) 4 5))) "error type checking bif")
+(test/exn (type-of (parse '(bif true 4 false))) "error type checking bif")
+;DIFFERENT TYPES OF t-fun?
+
 ;WITH
 ;FUN
 ;APP
@@ -262,6 +285,10 @@
 ;correct typing of isnempty
 (test (type-of (parse '(isnempty nempty))) (t-bool))
 (test (type-of (parse '(isnempty (ncons 4 nempty)))) (t-bool))
+;incorrect isnempty typing
+(test/exn (type-of (parse '(isnempty 4))) "error type checking isnempty")
+(test/exn (type-of (parse '(isnempty false))) "error type checking isnempty")
+;CLOSURE CASE
 
 
 
