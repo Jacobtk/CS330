@@ -206,6 +206,7 @@
 ))
 
 
+
 (type-of (parse '(with{x 5} y)))
 (test (type-of (parse '(with{x 5} x))) (t-num))
 
@@ -217,23 +218,59 @@
 (test (type-of (parse 'false)) (t-bool))
 ;correct typing of empty list
 (test (type-of (parse 'nempty)) (t-nlist))
+
+;BIN-NUM-OP
 ;correct typing of bin-op expressions
 (test (type-of (parse '(+ 2 3))) (t-num))
 (test (type-of (parse '(- 4 5))) (t-num))
 (test (type-of (parse '(* 1 2))) (t-num))
 ;error catching for bin-op expressions
 (test/exn (type-of (parse '(+ nempty 4))) "error in typing of bin-num-op")
+(test/exn (type-of (parse '(* 4 nempty))) "error in typing of bin-num-op")
 (test/exn (type-of (parse '(- 5 true))) "error in typing of bin-num-op")
+(test/exn (type-of (parse '(* false 6))) "error in typing of bin-num-op")
+;test bin-num-op with closure as parameters
 
+;ISZERO
+;BIF
+;WITH
+;FUN
+;APP
+
+;NCONS
 ;correct typing of ncons
 (test (type-of (parse '(ncons 3 nempty))) (t-nlist))
-;correct typing of nfirst on empty list
+;ncons first param is incorrect
+(test/exn (type-of (parse '(ncons true nempty))) "error type checking ncons")
+(test/exn (type-of (parse '(ncons nempty nempty))) "error type checking ncons")
+;CLOSURE CASE
+;ncons second param is incorrect
+(test/exn (type-of (parse '(ncons 4 4))) "error type checking ncons")
+(test/exn (type-of (parse '(ncons 4 false))) "error type checking ncons")
+;CLOSURE CASE
+
+;NFIRST
+;correct typing of nfirst on list
 (test (type-of (parse '(nfirst nempty))) (t-num))
-;correct typing of nfirst on a cons
 (test (type-of (parse '(nfirst (ncons 3 nempty)))) (t-num))
+;incorrect nfirst typing
+(test/exn (type-of (parse '(nfirst 4))) "error type checking nfirst")
+(test/exn (type-of (parse '(nfirst true))) "error type checking nfirst")
+;CLOSURE CASE
+
+;NREST
 ;correct typing of nrest
+(test (type-of (parse '(nrest nempty))) (t-nlist))
+(test (type-of (parse '(nrest (ncons 7 nempty)))) (t-nlist))
+;incorrect nrest typing
+(test/exn (type-of (parse '(nrest 3))) "error type checking nrest")
+(test/exn (type-of (parse '(nrest false))) "error type checking nrest")
+;CLOSURE CASE
 
-
+;ISNEMPTY
+;correct typing of isnempty
+(test (type-of (parse '(isnempty nempty))) (t-bool))
+(test (type-of (parse '(isnempty (ncons 4 nempty)))) (t-bool))
 
 
 
