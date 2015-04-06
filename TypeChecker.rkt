@@ -138,68 +138,76 @@
      ]
     [(id? e)
      ;look up the id in the env and return its type
-     ]
-    [(bool? e)
+    ; (if (mtEnv? e)
+      ;   (error 'type-of "ID with no env to evaluate")
+         ;(if (equal? e e)
+             (lookup (symbol e) env)
+            ; (type-of-rec e (anEnv-env env))
+            ; );)
+         ]
+[(bool? e)
+ (t-bool)
+ ]
+[(bin-num-op? e)
+ (if (and (equal? (type-of-rec (bin-num-op-lhs e) env) (t-num))
+          (equal? (type-of-rec (bin-num-op-rhs e) env) (t-num)))
+     (t-num)
+     (error 'type-of "error in typing of bin-num-op"))]
+[(iszero? e)
+ (if (t-num? (type-of-rec (iszero-e e) env))
      (t-bool)
-     ]
-    [(bin-num-op? e)
-     (if (and (equal? (type-of-rec (bin-num-op-lhs e) env) (t-num))
-              (equal? (type-of-rec (bin-num-op-rhs e) env) (t-num)))
-         (t-num)
-         (error 'type-of "error in typing of bin-num-op"))]
-    [(iszero? e)
-     (if (t-num? (type-of-rec (iszero-e e) env))
-         (t-bool)
-         (error 'type-of "expression for iszero did not evaluate to a number"))]
-    
-    [(bif? e)
-     (if (and (t-bool? (type-of-rec (bif-test e) env))
-              (equal? (type-of-rec (bif-then e) env) (type-of-rec (bif-else e) env)))
-         (type-of-rec (bif-then e) env)
-         (error 'type-of "problem type checking bif"))
-     ]
-    [(with? e)
-     ;bind the var to its type
-     (binding (with-bound-id e) (type-of-rec (with-bound-body e) env))
-     ;exntend the env by adding the freshly created binding
-     ]
-    [(fun? e)
-     
-     ;using the paremeter type in the body results in the specificed return type
-     ;return type matchs the body's return type
-     ]
-    [(app? e)
-     (if (and (t-fun? (type-of-rec (app-fun-expr e) env))
-              (equal? (type-of-rec (app-arg-expr e) env) (fun-arg-type (app-fun-expr e))))
-         (fun-result-type (app-fun-expr e))
-         (error 'type-of "error type checking app expression"))
-     ]
-    [(nempty? e)
+     (error 'type-of "expression for iszero did not evaluate to a number"))]
+
+[(bif? e)
+ (if (and (t-bool? (type-of-rec (bif-test e) env))
+          (equal? (type-of-rec (bif-then e) env) (type-of-rec (bif-else e) env)))
+     (type-of-rec (bif-then e) env)
+     (error 'type-of "problem type checking bif"))
+ ]
+[(with? e)
+ ;bind the var to its type
+ ;(binding (with-bound-id e) (type-of-rec (with-bound-body e) env))
+ ;exntend the env by adding the freshly created binding
+ (type-of-rec (with-body e) (anEnv (with-bound-id e) (type-of-rec (with-bound-body e) env) env))
+ ;call (type-of-rec (with-body e) env)
+ ]
+[(fun? e)
+ 
+ ;using the paremeter type in the body results in the specificed return type
+ ;return type matchs the body's return type
+ ]
+[(app? e)
+ (if (and (t-fun? (type-of-rec (app-fun-expr e) env))
+          (equal? (type-of-rec (app-arg-expr e) env) (fun-arg-type (app-fun-expr e))))
+     (fun-result-type (app-fun-expr e))
+     (error 'type-of "error type checking app expression"))
+ ]
+[(nempty? e)
+ (t-nlist)
+ ]
+[(ncons? e)
+ (t-nlist)
+ ]
+[(nfirst? e)
+ (if (t-nlist? (type-of-rec (nfirst-e e) env))
+     (t-num)
+     (error 'type-of "error type checking nfirst"))
+ ]
+[(nrest? e)
+ (if (t-nlist? (type-of-rec (nfirst-e e) env))
      (t-nlist)
-     ]
-    [(ncons? e)
-     (t-nlist)
-     ]
-    [(nfirst? e)
-     (if (t-nlist? (type-of-rec (nfirst-e e) env))
-         (t-num)
-         (error 'type-of "error type checking nfirst"))
-     ]
-    [(nrest? e)
-     (if (t-nlist? (type-of-rec (nfirst-e e) env))
-         (t-nlist)
-         (error 'type-of "error type checking nrest"))
-     ]
-    [(isnempty? e)
-     (if (t-nlist? (type-of-rec (nfirst-e e) env))
-         (t-bool)
-         (error 'type-of "error type checking isnempty"))
-     ]
-    ))
+     (error 'type-of "error type checking nrest"))
+ ]
+[(isnempty? e)
+ (if (t-nlist? (type-of-rec (nfirst-e e) env))
+     (t-bool)
+     (error 'type-of "error type checking isnempty"))
+ ]
+))
 
 
-
-(type-of (parse '(with{x 5} x)))
+(type-of (parse '(with{x 5} y)))
+(test (type-of (parse '(with{x 5} x))) (t-num))
 
 ;TESTS
 ;correct typing of num
