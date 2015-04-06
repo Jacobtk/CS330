@@ -119,11 +119,11 @@
                (isnempty (parse (second sexp)))]
               [else
                (if (andmap (lambda (x) (Expr? (parse x))) sexp)
-                   (app (parse (first sexp)) (map parse (rest sexp)))
+                   (app (parse (first sexp)) (parse (second sexp)))
                    (error 'parse "Invalid syntax"))])]
            [else
             (if (andmap (lambda (x) (Expr? (parse x))) sexp)
-                (app (parse (first sexp)) (map parse (rest sexp)))
+                (app (parse (first sexp)) (parse (second sexp)))
                 (error 'parse "Invalid syntax"))]
            ))]
     [else
@@ -218,6 +218,7 @@
 (test (type-of (parse 'false)) (t-bool))
 ;correct typing of empty list
 (test (type-of (parse 'nempty)) (t-nlist))
+(test/exn (type-of (parse 'x)) "no binding")
 
 ;BIN-NUM-OP
 ;correct typing of bin-op expressions
@@ -253,7 +254,7 @@
 (test/exn (type-of (parse '(bif nempty 0 1))) "error type checking bif")
 (test/exn (type-of (parse '(bif (fun x t-bool t-bool x) 4 5))) "error type checking bif")
 (test/exn (type-of (parse '(bif true 4 false))) "error type checking bif")
-;DIFFERENT TYPES OF t-fun?
+(test/exn (type-of (parse '(bif true (fun x t-num t-num x) (fun y t-bool t-bool y)))) "error type checking bif")
 
 ;WITH
 (test/exn (type-of (parse '(with x 5 y))) "no binding")
@@ -261,11 +262,18 @@
 
 ;FUN
 ;correct typing of fun
+(test (type-of (parse '(fun x t-bool t-num (bif x 0 1)))) (t-fun (t-bool) (t-num)))
 ;incorrect typing of fun
+(test/exn (type-of (parse '(fun x t-bool t-bool (bif x 0 1)))) "error type checking fun")
 
 ;APP
-;correct typing of fun
-;incorrect typing of fun
+;correct typing of app
+(test (type-of (parse '((fun x t-num t-bool (iszero (- x 1))) 1))) (t-bool))
+;incorrect typing of app
+(test/exn (type-of (parse '(4 3))) "error type checking app")
+(test/exn (type-of (parse '(true 3))) "error type checking app")
+(test/exn (type-of (parse '(nempty 4))) "error type checking app")
+(test/exn (type-of (parse '((fun x t-num t-bool (iszero (- x 1))) true))) "error type checking app")
 
 ;NCONS
 ;correct typing of ncons
