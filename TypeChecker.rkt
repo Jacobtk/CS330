@@ -18,12 +18,29 @@
   [nfirst (e Expr?)]
   [nrest (e Expr?)]
   [isnempty (e Expr?)])
- 
+
 (define-type Type
   [t-num]
   [t-bool]
   [t-nlist]
   [t-fun (arg Type?) (result Type?)])
+
+(define-type Env
+  [mtEnv]
+  [anEnv (name symbol?) (value Type?) (env Env?)])
+
+
+(define (lookup name env)
+  (type-case Env env
+    [mtEnv () (error 'lookup "no binding for identifier")]
+    [anEnv (bound-name bound-value rest-env)
+           (if (symbol=? bound-name name)
+               bound-value
+               (lookup name rest-env))]))
+
+(define-type Binding
+  [binding (name symbol?) (named-expr Type?)])
+
 
 ;op-table used to define the valid operations for binop
 (define op-table
@@ -35,7 +52,7 @@
   (if (list? (assoc op op-table))
       (second (assoc op op-table))
       false))
- 
+
 ; parse : s-expression -> Expr
 (define (parse sexp)
   (cond
@@ -43,8 +60,8 @@
      (num sexp)]
     [(symbol? sexp) 
      (cond [(or (symbol=? 'with sexp) (symbol=? '+ sexp) (symbol=? '- sexp)
-             (symbol=? '* sexp) (symbol=? '/ sexp) (symbol=? 'bif sexp)
-             (symbol=? 'fun sexp))
+                (symbol=? '* sexp) (symbol=? '/ sexp) (symbol=? 'bif sexp)
+                (symbol=? 'fun sexp))
             (error 'parse "Invalid syntax")]
            [(symbol=? 'true sexp)
             (bool true)]
@@ -67,13 +84,9 @@
            [(symbol? (first sexp))
             (cond
               [(symbol=? 'with (first sexp))  ;change to reflect new with 
-               (if (and (equal? (length sexp) 3)
-                        (list? (second sexp))
-                        (list? (parse-bindings (second sexp)))
-                        (not (multipleBindings? (second sexp)))
-                        (Expr? (parse (third sexp))))
-                   (with (parse-bindings (second sexp)) (parse (third sexp)))
-                   (error 'parse "Invalid syntax"))]
+               (with (first (second sexp))
+                     (parse (second (second sexp)))
+                     (parse (third sexp)))]
               [(symbol=? 'bif (first sexp))
                (if (and (equal? (length sexp) 4)
                         (Expr? (parse (second sexp)))
@@ -112,38 +125,45 @@
            ))]
     [else
      (error 'parse "Invalid syntax")]))
- 
-; type-of : Expr -> Type
+
+
+
 (define (type-of e)
+  (type-of-rec e (mtEnv))
+  )
+
+; type-of : Expr -> Type
+(define (type-of-rec e env) ;make a recursive helper fun that takes an empty type env
   (cond
     [(num? e)
      (t-num)
      ]
     [(id? e)
-     ;type check the id
+     ;look up the id in the env and return its type
      ]
     [(bool? e)
      (t-bool)
      ]
     [(bin-num-op? e)
-     (if (and (equal? (type-of (bin-num-op-lhs e)) (t-num))
-              (equal? (type-of (bin-num-op-rhs e)) (t-num)))
+     (if (and (equal? (type-of-rec (bin-num-op-lhs e) env) (t-num))
+              (equal? (type-of-rec (bin-num-op-rhs e) env) (t-num)))
          (t-num)
          (error 'type-of "error in typing of bin-num-op"))]
     [(iszero? e)
-     (if (t-num? (type-of (iszero-e e)))
+     (if (t-num? (type-of-rec (iszero-e e) env))
          (t-bool)
          (error 'type-of "expression for iszero did not evaluate to a number"))]
-     
+    
     [(bif? e)
-     (if (and (t-bool? (type-of (bif-test e)))
-              (equal? (type-of (bif-then e)) (type-of (bif-else e))))
-         (type-of (bif-then e))
+     (if (and (t-bool? (type-of-rec (bif-test e) env))
+              (equal? (type-of-rec (bif-then e) env) (type-of-rec (bif-else e) env)))
+         (type-of-rec (bif-then e) env)
          (error 'type-of "problem type checking bif"))
      ]
     [(with? e)
-     ;recurse on the third expr,(the body) 
-     ;check second that ID tied to exp, that ID type should be taken in of body of with
+     ;bind the var to its type
+     (binding (with-bound-id e) (type-of-rec (with-bound-body e) env))
+     ;exntend the env by adding the freshly created binding
      ]
     [(fun? e)
      
@@ -151,8 +171,8 @@
      ;return type matchs the body's return type
      ]
     [(app? e)
-     (if (and (t-fun? (type-of (app-fun-expr e)))
-              (equal? (type-of (app-arg-expr e)) (fun-arg-type (app-fun-expr e))))
+     (if (and (t-fun? (type-of-rec (app-fun-expr e) env))
+              (equal? (type-of-rec (app-arg-expr e) env) (fun-arg-type (app-fun-expr e))))
          (fun-result-type (app-fun-expr e))
          (error 'type-of "error type checking app expression"))
      ]
@@ -163,25 +183,25 @@
      (t-nlist)
      ]
     [(nfirst? e)
-     (if (t-nlist? (type-of (nfirst-e e)))
+     (if (t-nlist? (type-of-rec (nfirst-e e) env))
          (t-num)
          (error 'type-of "error type checking nfirst"))
      ]
     [(nrest? e)
-     (if (t-nlist? (type-of (nfirst-e e)))
+     (if (t-nlist? (type-of-rec (nfirst-e e) env))
          (t-nlist)
          (error 'type-of "error type checking nrest"))
      ]
     [(isnempty? e)
-     (if (t-nlist? (type-of (nfirst-e e)))
+     (if (t-nlist? (type-of-rec (nfirst-e e) env))
          (t-bool)
          (error 'type-of "error type checking isnempty"))
      ]
-     ))
+    ))
 
 
 
-
+(type-of (parse '(with{x 5} x)))
 
 ;TESTS
 ;correct typing of num
@@ -210,12 +230,6 @@
 ;correct typing of nrest
 
 
-
-
-
-
-(define-type Binding
-  [binding (name symbol?) (named-expr Expr?)])
 
 
 
@@ -249,8 +263,8 @@
          false]
         [else
          (or (ormap (lambda (x) (symbol=? (first (first lob)) (first x))) (rest lob))
-              (multipleBindings? (rest lob)))]))
-         
+             (multipleBindings? (rest lob)))]))
+
 ;This function is called to determine whether a fun statement has duplicate bindings
 (define (multipleBindingsFun? los)
   (cond [(empty? los)
