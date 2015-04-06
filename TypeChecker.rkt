@@ -137,14 +137,11 @@
      (t-num)
      ]
     [(id? e)
-     ;look up the id in the env and return its type
-    ; (if (mtEnv? e)
-      ;   (error 'type-of "ID with no env to evaluate")
-         ;(if (equal? e e)
-             (lookup (symbol e) env)
-            ; (type-of-rec e (anEnv-env env))
-            ; );)
-         ]
+     (type-case Expr e
+       [id (v) (lookup v env)]
+       [else 
+        (error 'type-of "casting to symbol error")]
+         )]
 [(bool? e)
  (t-bool)
  ]
@@ -207,7 +204,7 @@
 
 
 
-(type-of (parse '(with{x 5} y)))
+(test/exn (type-of (parse '(with{x 5} y))) "no binding")
 (test (type-of (parse '(with{x 5} x))) (t-num))
 
 ;TESTS
