@@ -1,6 +1,6 @@
 #lang plai
 
-
+; The abstract syntax of the Expr type
 (define-type Expr
   [num (n number?)]
   [id (v symbol?)]
@@ -53,6 +53,7 @@
       (second (assoc op op-table))
       false))
 
+;parse-type : symbol -> Type
 ;parses a symbol into a Type
 (define (parse-type sym)
   (cond [(symbol=? sym 't-num)
@@ -65,6 +66,7 @@
          (error 'parse-type "haven't implemented this function for t-fun type")]))
 
 ; parse : s-expression -> Expr
+; parses the sexp passed in and builds an abstract syntax tree
 (define (parse sexp)
   (cond
     [(number? sexp) 
@@ -130,13 +132,15 @@
      (error 'parse "Invalid syntax")]))
 
 
-
+; type-of : Expr -> Type
+; finds the type of the expression passed in
 (define (type-of e)
   (type-of-rec e (mtEnv))
   )
 
 ; type-of : Expr -> Type
-(define (type-of-rec e env) ;make a recursive helper fun that takes an empty type env
+; the helper function of type-of that uses and env to find the type of IDs and such
+(define (type-of-rec e env)
   (cond
     [(num? e)
      (t-num)]
@@ -164,10 +168,8 @@
          (error 'type-of "error type checking bif"))]
     [(with? e)
      ;bind the var to its type
-     ;(binding (with-bound-id e) (type-of-rec (with-bound-body e) env))
      ;exntend the env by adding the freshly created binding
      (type-of-rec (with-body e) (anEnv (with-bound-id e) (type-of-rec (with-bound-body e) env) env))
-     ;call (type-of-rec (with-body e) env)
      ]
     [(fun? e)
      (if (equal? (fun-result-type e)
@@ -218,7 +220,12 @@
 (test (type-of (parse 'false)) (t-bool))
 ;correct typing of empty list
 (test (type-of (parse 'nempty)) (t-nlist))
+;check for wrong stuff
 (test/exn (type-of (parse 'x)) "no binding")
+(test/exn (type-of (parse true)) "Invalid syntax")
+(test/exn (type-of (parse #t)) "Invalid syntax")
+(test/exn (type-of (parse false)) "Invalid syntax")
+(test/exn (type-of (parse #t)) "Invalid syntax")
 
 ;BIN-NUM-OP
 ;correct typing of bin-op expressions
@@ -259,12 +266,18 @@
 ;WITH
 (test/exn (type-of (parse '(with x 5 y))) "no binding")
 (test (type-of (parse '(with x 5 x))) (t-num))
+(test (type-of (parse '(with x true x))) (t-bool))
+(test/exn (type-of (parse '(with x #t x))) "Invalid")
+(test/exn (type-of (parse '(with x #f x))) "Invalid")
 
 ;FUN
 ;correct typing of fun
 (test (type-of (parse '(fun x t-bool t-num (bif x 0 1)))) (t-fun (t-bool) (t-num)))
+(test (type-of (parse '(fun x t-num t-num (with x 0 x)))) (t-fun (t-num) (t-num)))
+(test (type-of (parse '(fun x t-bool t-bool (bif x false false)))) (t-fun (t-bool) (t-bool)))
 ;incorrect typing of fun
 (test/exn (type-of (parse '(fun x t-bool t-bool (bif x 0 1)))) "error type checking fun")
+(test/exn (type-of (parse '(fun x t-bool t-num (bif x false true)))) "error type checking fun")
 
 ;APP
 ;correct typing of app
@@ -300,6 +313,7 @@
 ;correct typing of nrest
 (test (type-of (parse '(nrest nempty))) (t-nlist))
 (test (type-of (parse '(nrest (ncons 7 nempty)))) (t-nlist))
+(test (type-of (parse '(nrest (ncons 7 (ncons 5 nempty))))) (t-nlist))
 ;incorrect nrest typing
 (test/exn (type-of (parse '(nrest 3))) "error type checking nrest")
 (test/exn (type-of (parse '(nrest false))) "error type checking nrest")
@@ -309,58 +323,8 @@
 ;correct typing of isnempty
 (test (type-of (parse '(isnempty nempty))) (t-bool))
 (test (type-of (parse '(isnempty (ncons 4 nempty)))) (t-bool))
+(test (type-of (parse '(isnempty (ncons 4 (ncons 3 nempty))))) (t-bool))
 ;incorrect isnempty typing
 (test/exn (type-of (parse '(isnempty 4))) "error type checking isnempty")
 (test/exn (type-of (parse '(isnempty false))) "error type checking isnempty")
 (test/exn (type-of (parse '(isnempty (fun x t-nlist t-nlist nempty)))) "error type checking isnempty")
-
-
-
-
-
-
-
-
-
-
-
-
-
-;(parse-bindings (listof list?)) -> (listof Binding?)
-; takes a list of lists and creates a list of bindings
-(define (parse-bindings lob)
-  (if (andmap (lambda (x) 
-                (and (list? x) 
-                     (equal? (length x) 2)
-                     (symbol? (first x)) 
-                     (Expr? (parse(second x)))))
-              lob)
-      (map (lambda (x) (binding (first x) (parse (second x)))) lob)
-      false))
-
-;This function is called to determine whether a with statement has duplicate bindings
-(define (multipleBindings? lob)
-  (cond [(empty? lob) 
-         false]
-        [(equal? (length lob) 1)
-         false]
-        [else
-         (or (ormap (lambda (x) (symbol=? (first (first lob)) (first x))) (rest lob))
-             (multipleBindings? (rest lob)))]))
-
-;This function is called to determine whether a fun statement has duplicate bindings
-(define (multipleBindingsFun? los)
-  (cond [(empty? los)
-         false]
-        [(equal? (length los) 1)
-         false]
-        [else
-         (or (ormap (lambda (x) (symbol=? (first los) x)) (rest los))
-             (multipleBindingsFun? (rest los)))]))
-
-
-;for app make sure the first thing returns a closure.
-;make sure the length of the list of params in the closure matches the list of params in app.
-;correct number of args and parameters (too few and too many)
-
-
