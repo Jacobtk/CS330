@@ -48,7 +48,7 @@
         [(symbol=? sym 't-bool)
          (t-bool)]
         [(symbol=? sym 't-nlist)
-         (t-nlist)]
+         (t-list)]
         [else
          (error 'parse-type "haven't implemented this function for t-fun type")]))
 
@@ -89,6 +89,10 @@
                (with (second sexp)
                      (parse (third sexp))
                      (parse (fourth sexp)))]
+              [(symbol=? 'rec-with (first sexp))
+               (rec-with (second sexp)
+                         (parse (third sexp))
+                         (parse (fourth sexp)))]
               [(symbol=? 'bif (first sexp))
                (if (and (equal? (length sexp) 4)
                         (Expr? (parse (second sexp)))
@@ -97,17 +101,17 @@
                    (bif (parse (second sexp)) (parse (third sexp)) (parse (fourth sexp)))
                    (error 'parse "Invalid syntax"))]
               [(symbol=? 'fun (first sexp))
-               (fun (second sexp) (parse-type (third sexp)) (parse-type (fourth sexp)) (parse (fifth sexp)))]
+               (fun (second sexp) (parse (third sexp)))]
               [(symbol=? 'iszero (first sexp))
                (iszero (parse (second sexp)))]               
-              [(symbol=? 'ncons (first sexp))
-               (ncons (parse (second sexp)) (parse (third sexp)))]
-              [(symbol=? 'nfirst (first sexp))
-               (nfirst (parse (second sexp)))]
-              [(symbol=? 'nrest (first sexp))
-               (nrest (parse (second sexp)))]
-              [(symbol=? 'isnempty (first sexp))
-               (isnempty (parse (second sexp)))]
+              [(symbol=? 'tcons (first sexp))
+               (tcons (parse (second sexp)) (parse (third sexp)))]
+              [(symbol=? 'tfirst (first sexp))
+               (tfirst (parse (second sexp)))]
+              [(symbol=? 'trest (first sexp))
+               (trest (parse (second sexp)))]
+              [(symbol=? 'istempty (first sexp))
+               (istempty (parse (second sexp)))]
               [else
                (if (andmap (lambda (x) (Expr? (parse x))) sexp)
                    (app (parse (first sexp)) (parse (second sexp)))
