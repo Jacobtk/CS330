@@ -125,7 +125,24 @@
      (error 'parse "Invalid syntax")]))
 
 
-
+(define (generate-constraints e-id e)
+  (type-case Expr e
+    (num (n) (list (eqc (t-var e-id) (t-num))))
+    (id (v) (list (eqc (t-var e-id) (t-var v))))
+    ; ...
+    (bin-num-op (op lhs rhs)
+                (local ([define lhs-id (gensym)]
+                        [define rhs-id (gensym)]
+                        [define lhs-c (generate-constraints lhs-id lhs)]
+                        [define rhs-c (generate-constraints rhs-id rhs)])
+                  (append 
+                   (list (eqc (t-var e-id) (t-num))
+                         (eqc (t-var lhs-id) (t-num))
+                         (eqc (t-var rhs-id) (t-num)))
+                   lhs-c
+                   rhs-c)))
+    (else (error "Constraint generation not finished yet."))
+    ))
 
 
 
