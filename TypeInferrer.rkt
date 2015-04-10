@@ -125,13 +125,48 @@
      (error 'parse "Invalid syntax")]))
 
 
+(define (alpha-vary e)
+  0)
 
 
+(define (generate-constraints e-id e)
+  (type-case Expr e
+    (num (n) (list (eqc (t-var e-id) (t-num))))
+    (id (v) (list (eqc (t-var e-id) (t-var v))))
+    (bool (b) (list (eqc (t-var e-id) (t-bool))))
+    (bin-num-op (op lhs rhs)
+                (local ([define lhs-id (gensym)]
+                        [define rhs-id (gensym)]
+                        [define lhs-c (generate-constraints lhs-id lhs)]
+                        [define rhs-c (generate-constraints rhs-id rhs)])
+                  (append 
+                   (list (eqc (t-var e-id) (t-num))
+                         (eqc (t-var lhs-id) (t-num))
+                         (eqc (t-var rhs-id) (t-num)))
+                   lhs-c
+                   rhs-c)))
+    (iszero (e) 0)
+    (bif (test then else) 0)
+    (with (bound-id bound-body body) 0)
+    (rec-with (bound-id bound-body body) 0)
+    (fun (arg-id body) 0)
+    (app (fun-expr arg-expr) 0)
+    (tempty () 0)
+    (tcons (first rest) 0)
+    (tfirst (e) 0)
+    (trest (e) 0)
+    (istempty (e) 0)
+    
+    
+    ))
 
 
+(define (unify loc)
+  0)
 
 
-
+(define (infer-type e)
+  0)
 
 
 
