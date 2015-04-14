@@ -245,7 +245,15 @@
           0)
     (rec-with (bound-id bound-body body) 0)
     (fun (arg-id body) 0)
-    (app (fun-expr arg-expr) 0)
+    (app (fun-expr arg-expr) 
+         (local ([define fun-id (gensym)]
+                 [define arg-id (gensym)]
+                 [define fun-c (generate-constraints fun-id fun-expr)]
+                 [define arg-c (generate-constraints arg-id arg-expr)])
+           (append
+            (list (eqc (t-var fun-id) (t-fun (t-var arg-id) (t-var e-id))))
+            fun-c
+            arg-c)))
     (tempty () (list (eqc (t-var e-id) (t-list (t-var (gensym))))))
     (tcons (first rest) 
            (local ([define first-id (gensym)]
@@ -383,8 +391,14 @@
   )
 
 
-;(define (infer-type e)
-;  (unify (generate-constraints ? (alpha-vary (parse e)))))
+(define (infer-type e)
+  (local ([define root-id (gensym)]
+          [define final-c (unify (generate-constraints root-id (alpha-vary e)))])
+    (eqc-rhs (first (filter (lambda (x)
+                              (symbol=? root-id
+                                        (t-var-v (eqc-lhs x))))
+                            final-c)))
+    ))
 
 
 
