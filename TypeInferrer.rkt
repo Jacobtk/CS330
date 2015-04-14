@@ -246,7 +246,7 @@
     (rec-with (bound-id bound-body body) 0)
     (fun (arg-id body) 0)
     (app (fun-expr arg-expr) 0)
-    (tempty () 0)
+    (tempty () (list (eqc (t-var e-id) (t-list (t-var (gensym))))))
     (tcons (first rest) 
            (local ([define first-id (gensym)]
                    [define rest-id (gensym)]
@@ -259,29 +259,31 @@
               rest-c)))
     (tfirst (expr) 
             (local ([define expr-id (gensym)]
+                    [define return (gensym)]
                     [define expr-c (generate-constraints expr-id expr)])
               (append
-               (list (eqc (t-var e-id) 
-                     ;constraint about what first will return
+               (list (eqc (t-var e-id) (t-var return))
+                     (eqc (t-var expr-id) (t-list (t-var return)))   
                      )
                expr-c)))
                      
     (trest (expr) 
            (local ([define expr-id (gensym)]
+                   [define list-type (gensym)]
                    [define expr-c (generate-constraints expr-id expr)])
              (append
-              (list (eqc (t-var expr-id) (t-list))
-                    (eqc (t-var e-id) (t-list)))
+              (list (eqc (t-var expr-id) (t-list (t-var list-type)))
+                    (eqc (t-var e-id) (t-list (t-var list-type))))
               expr-c)))
     (istempty (expr) 
               (local ([define expr-id (gensym)]
+                      [define list-type (gensym)]
                       [define expr-c (generate-constraints expr-id expr)])
                 (append
                  (list (eqc (t-var e-id) (t-bool))
-                       (eqc (t-var expr-id) (t-list)))
+                       (eqc (t-var expr-id) (t-list (t-var list-type))))
                  expr-c)))
-    
-    
+     
     ))
 
 
@@ -297,21 +299,29 @@
       (local ([define const (first (loi-loc listIn))]
               [define shipping (loi (rest (loi-loc listIn)) (loi-los listIn))])
       (cond
-        [(equal? (constraint-lhs const) (constraint-rhs const))
+        [(equal? (eqc-lhs const) (eqc-rhs const))
          ;do nothing 
          (display "do nothing")
           ]
-        [(t-var? (constraint-lhs const))
+        [(t-var? (eqc-lhs const))
          ;(unify-helper (helperFun (shipping)))
          (display "replace all lhs with rhs in shipping (help function needed")
          ]
-        [(t-var? (constraint-rhs const))
+        [(t-var? (eqc-rhs const))
          ;(unify-helper (helperFun (shipping)))
          (display "replace all rhs with lhs in shipping")         
          ]
-        [#f (display "shouldnt be here") ;this is number four from the book
+        [(and (t-fun? (eqc-rhs const))
+              (t-fun? (eqc-lhs const)))
+         (unify-helper (loi (append (list (eqc (t-fun-arg (eqc-rhs const))
+                                               (t-fun-arg (eqc-lhs const)))
+                                          (eqc (t-fun-result (eqc-rhs const))
+                                               (t-fun-result (eqc-lhs const))))
+                                    (rest (loi-loc listIn)))
+                            (loi-los listIn)))
+                                          
             ]
-        [#t
+        [else
          (error "type mismatch")
          ]
       
