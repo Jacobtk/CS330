@@ -145,68 +145,17 @@
                          (eqc (t-var rhs-id) (t-num)))
                    lhs-c
                    rhs-c)))
-    (iszero (expr) 
-            (local ([define expr-id (gensym)]
-                    [define expr-c (generate-constraints expr-id expr)])
-              (append
-               (list (eqc (t-var e-id) (t-bool))
-                     (eqc (t-var expr-id) (t-num)))
-               expr-c)))
-    (bif (test then else) 
-         (local ([define test-id (gensym)]
-                 [define then-id (gensym)]
-                 [define else-id (gensym)]
-                 [define test-c (generate-constraints test-id test)]
-                 [define then-c (generate-constraints then-id then)]
-                 [define else-c (generate-constraints else-id else)])
-           (append
-            (list (eqc (t-var test-id) (t-bool))
-                  (eqc (t-var e-id) (t-var then-id))
-                  (eqc (t-var then-id) (t-var else-id)))
-            test-c
-            then-c
-            else-c)))
-    (with (bound-id bound-body body) 
-          0)
+    (iszero (e) 0)
+    (bif (test then else) 0)
+    (with (bound-id bound-body body) 0)
     (rec-with (bound-id bound-body body) 0)
     (fun (arg-id body) 0)
     (app (fun-expr arg-expr) 0)
     (tempty () 0)
-    (tcons (first rest) 
-           (local ([define first-id (gensym)]
-                   [define rest-id (gensym)]
-                   [define first-c (generate-constraints first-id first)]
-                   [define rest-c (generate-constraints rest-id rest)])
-             (append 
-              (list (eqc (t-var e-id) (t-list))
-                    (eqc (t-var rest-id) (t-list))
-                    ;any other constraints?
-                    )
-              first-c
-              rest-c)))
-    (tfirst (expr) 
-            (local ([define expr-id (gensym)]
-                    [define expr-c (generate-constraints expr-id expr)])
-              (append
-               (list (eqc (t-var expr-id) (t-list))
-                     ;constraint about what first will return
-                     )
-               expr-c)))
-                     
-    (trest (expr) 
-           (local ([define expr-id (gensym)]
-                   [define expr-c (generate-constraints expr-id expr)])
-             (append
-              (list (eqc (t-var expr-id) (t-list))
-                    (eqc (t-var e-id) (t-list)))
-              expr-c)))
-    (istempty (expr) 
-              (local ([define expr-id (gensym)]
-                      [define expr-c (generate-constraints expr-id expr)])
-                (append
-                 (list (eqc (t-var e-id) (t-bool))
-                       (eqc (t-var expr-id) (t-list)))
-                 expr-c)))
+    (tcons (first rest) 0)
+    (tfirst (e) 0)
+    (trest (e) 0)
+    (istempty (e) 0)
     
     
     ))
