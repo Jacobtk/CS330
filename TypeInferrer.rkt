@@ -24,9 +24,24 @@
   [t-list (elem Type?)]
   [t-fun (arg Type?) (result Type?)]
   [t-var (v symbol?)])
- 
+
+(define-type locAlos
+  [loi (loc list?) (los list?)])
+
 (define-type Constraint
   [eqc (lhs Type?) (rhs Type?)])
+
+(define-type Env
+  [mtEnv]
+  [anEnv (name symbol?) (value symbol?) (env Env?)])
+
+(define (lookup name env)
+  (type-case Env env
+    [mtEnv () (error 'lookup "no binding for identifier")]
+    [anEnv (bound-name bound-value rest-env)
+           (if (symbol=? bound-name name)
+               bound-value
+               (lookup name rest-env))]))
 
 
 ;op-table used to define the valid operations for binop
@@ -126,7 +141,67 @@
 
 
 (define (alpha-vary e)
-  0)
+  (alpha-vary-rec e (mtEnv)))
+
+(define (alpha-vary-rec e env)
+  (cond
+    [(num? e) e]
+    [(id? e)
+        ;id
+       (if (lookup (id-v e) env)
+           (id (lookup (id-v e) env))
+           (error 'type-of "casting to symbol error")
+         )
+        ]
+    [(bool? e) e]
+    [(bin-num-op? e)
+               (bin-num-op (bin-num-op-op e) 
+                           (alpha-vary-rec (bin-num-op-lhs e) env) 
+                           (alpha-vary-rec (bin-num-op-rhs e) env)) 
+                ]
+    [(iszero? e) e]
+    [(bif? e) 
+         (bif 
+          (alpha-vary-rec (bif-test e) env) 
+          (alpha-vary-rec (bif-then e) env) 
+          (alpha-vary-rec (bif-else e) env))
+         ]
+    [(with? e) 
+          ;with ;how to check for unbound symbol in body
+          (begin
+           (local ([define x (gensym (with-bound-id e))])
+         ; (with x (alpha-vary-rec (with-bound-body e) env) (alpha-vary-rec (with-body e) (anEnv (with-bound-id e) x env)))))
+             (with x 
+                   (alpha-vary-rec (with-bound-body e) env) 
+                   (alpha-vary-rec (with-body e) (anEnv (with-bound-id e) x env)))
+             ))
+          ]
+    [(rec-with? e) 
+              ;rec with
+          (begin
+           (local ([define x (gensym (rec-with-bound-id e))])
+             (rec-with x 
+                       (alpha-vary-rec (rec-with-bound-body e) (anEnv (rec-with-bound-id e) x env)) 
+                       (alpha-vary-rec (rec-with-body e) (anEnv (rec-with-bound-id e) x env)))))]
+
+    [(fun? e) 
+         ;fun
+          (begin
+           (local ([define x (gensym (fun-arg-id e))])
+             (fun (fun-arg-id e) (alpha-vary-rec (fun-body e) (anEnv (fun-arg-id e) x env)))
+             ))
+     ]
+    [(app? e) 0]
+    [(tempty? e) e]
+    [(tcons? e)  
+           (tcons (tcons-first e) (tcons-rest e))
+           ]
+    [(tfirst? e) e]
+    [(trest? e) e]
+    [(istempty? e) e]
+    ))
+    
+    
 
 
 (define (generate-constraints e-id e)
@@ -212,15 +287,101 @@
     ))
 
 
+
 (define (unify loc)
-  0)
+   (unify-helper (loi loc empty))
+  )
+
+(define (unify-helper listIn)
+  (if (empty? (loi-loc listIn)) ;if list of constraints is empty
+      (loi-los listIn) ;return list of subs
+      ;else
+      (local ([define const (first (loi-loc listIn))]
+              [define shipping (loi (rest (loi-loc listIn)) (loi-los listIn))])
+      (cond
+        [(equal? (constraint-lhs const) (constraint-rhs const))
+         ;do nothing 
+         (display "do nothing")
+          ]
+        [(t-var? (constraint-lhs const))
+         ;(unify-helper (helperFun (shipping)))
+         (display "replace all lhs with rhs in shipping (help function needed")
+         ]
+        [(t-var? (constraint-rhs const))
+         ;(unify-helper (helperFun (shipping)))
+         (display "replace all rhs with lhs in shipping")         
+         ]
+        [#f (display "shouldnt be here") ;this is number four from the book
+            ]
+        [#t
+         (error "type mismatch")
+         ]
+      
+      )))
+  )
 
 
 (define (infer-type e)
   0)
 
 
+;***************************************************************************************
+;********************     Alpha-vary tests     *****************************************
+;***************************************************************************************
+;********* Num *****************************
+(test (alpha-vary (parse 4)) (num 4))
+;********* ID *****************************
+(test (alpha-vary-rec (parse 'x) (anEnv 'x 'x4 (mtEnv))) (id 'x4))
+(test/exn (alpha-vary-rec (parse 'y) (anEnv 'x 'x4 (mtEnv))) "no binding")
+;********* Bool *****************************
+(test (alpha-vary (parse 'true)) (bool #t))
+(test (alpha-vary (parse 'false)) (bool #f))
+;********* bin-num-op *****************************
+(test (alpha-vary (bin-num-op + (num 3) (num 4))) (bin-num-op + (num 3) (num 4)))
+;********* iszero *****************************
+;****(test (alpha-vary (parse '(tempty))) (tempty)) Do we need a tempty in the parser?
+;********* bif *****************************
+(test (alpha-vary-rec (parse '(bif true a 4)) (anEnv 'a 'x4 (mtEnv))) (bif (bool #t) (id 'x4) (num 4)))
+;********* app *****************************
+;see the function tests
+;********* tempty *****************************
 
+;********* tcons *****************************
+(test (alpha-vary (parse '(tcons 4 5))) (tcons (num 4) (num 5)))
+;********* tfirst *****************************
+(test (alpha-vary (parse '(tfirst (tcons 4 5)))) (tfirst (tcons (num 4) (num 5))))
+;********* trest *****************************
+(test (alpha-vary (parse '(trest (tcons 4 5)))) (trest (tcons (num 4) (num 5))))
+;********* isempty *****************************
+(test (alpha-vary (parse '(istempty (tcons 4 5)))) (istempty (tcons (num 4) (num 5))))
+;********* With *****************************
+(alpha-vary (parse '(+ 3 4)))
+(alpha-vary (parse '(+ (with x 4 x) (with x 5 x))))
+(alpha-vary (parse '(with x 4 (with x 5 (+ x 9)))))
+(alpha-vary (parse '(with x 4 x)))
+(alpha-vary (parse '(with x (with x (with x 6 x) (+ x 9)) (+ x 5)))) ;show the correct position of x as opposed to rec-with
+(alpha-vary (parse '(with x 4 (with x 5 (with x 7 x)))))
+(alpha-vary (parse '(with x 4 (with x (+ x 1) (+ x 3)))))
+(test/exn (alpha-vary (parse '(with x 4 y))) "no binding")
+(test/exn (alpha-vary (parse '(with x 4 (+ y 5)))) "no binding")
+
+;********* With rec *******************************
+(alpha-vary (parse '(+ 3 4)))
+(alpha-vary (parse '(+ (rec-with x 4 x) (rec-with x 5 x))))
+(alpha-vary (parse '(rec-with x 4 (rec-with x 5 (+ x 9)))))
+(alpha-vary (parse '(rec-with x 4 x)))
+(alpha-vary (parse '(rec-with x 4 (rec-with x 5 x))))
+(alpha-vary (parse '(rec-with x (rec-with x (rec-with x 6 x) x) x)))
+(alpha-vary (parse '(rec-with x (rec-with x (rec-with x 6 x) (+ x 9)) (+ x 5))))
+(alpha-vary (parse '(rec-with x 4 (rec-with x (+ x 1) (+ x 3)))))
+(test/exn (alpha-vary (parse '(rec-with x 4 y))) "no binding")
+(test/exn (alpha-vary (parse '(rec-with x 4 (+ y 5)))) "no binding")
+
+;********** Fun *************************************
+(alpha-vary (parse '(fun x (+ x 5))))
+(alpha-vary (parse '(fun x (with y 5 (+ x y)))))
+(alpha-vary (parse '(fun x (- (with x 5 (+ x x)) x)))) ;show shadowing correctly
+(test/exn (alpha-vary (parse '(fun x (+ y 5)))) "no binding")
 
 
 
