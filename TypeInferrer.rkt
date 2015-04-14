@@ -178,17 +178,15 @@
                    [define first-c (generate-constraints first-id first)]
                    [define rest-c (generate-constraints rest-id rest)])
              (append 
-              (list (eqc (t-var e-id) (t-list))
-                    (eqc (t-var rest-id) (t-list))
-                    ;any other constraints?
-                    )
+              (list (eqc (t-var e-id) (t-list (t-var first-id)))
+                    (eqc (t-var rest-id) (t-list (t-var first-id))))
               first-c
               rest-c)))
     (tfirst (expr) 
             (local ([define expr-id (gensym)]
                     [define expr-c (generate-constraints expr-id expr)])
               (append
-               (list (eqc (t-var expr-id) (t-list))
+               (list (eqc (t-var e-id) 
                      ;constraint about what first will return
                      )
                expr-c)))
