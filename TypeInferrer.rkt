@@ -286,7 +286,62 @@
      
     ))
 
+;(define (findMyType var typeIn)
+;  (cond
+;    [(t-list? typeIn) 
+;     (if (equal? (t-var-v (t-list-elem typeIn)) var)
+;         (t-list (t-var var)))]
+;     
+;    [(t-num? typeIn) typeIn]
+;    [(t-bool? typeIn) typeIn]))
 
+(define (findAndReplace lookFor replaceWith typeIn)
+  (cond
+    [(t-var? typeIn)
+     (if (equal? (t-var-v typeIn) lookFor)
+         (t-var replaceWith)
+         typeIn)]
+    [(t-list? typeIn)
+     (if (equal? (t-list-elem typeIn) lookFor)
+         (t-list replaceWith)
+         typeIn)]
+    [(t-fun? typeIn)
+     (t-fun (findAndReplace lookFor replaceWith (t-fun-arg typeIn)) 
+            (findAndReplace lookFor replaceWith (t-fun-result typeIn)))]
+    [#t
+     typeIn] ;everything else just return itself
+      
+  ))
+
+;(define-type Type
+;  [t-num]
+;  [t-bool]
+;  [t-list (elem Type?)]
+;  [t-fun (arg Type?) (result Type?)]
+;  [t-var (v symbol?)])
+
+(define (replaceHelper-Stack lookFor replaceWith list)
+  (if (empty? list) list
+      (cons (eqc (findAndReplace lookFor replaceWith (eqc-lhs (first list))) 
+                 (findAndReplace lookFor replaceWith (eqc-rhs (first list)))) 
+            (replaceHelper-Stack lookFor replaceWith (rest list)))
+  ))
+
+(define (replaceHelper-Sub lookFor replaceWith list)
+  (if (empty? list) list
+      (cons (eqc (eqc-lhs (first list)) 
+                 (findAndReplace lookFor replaceWith (eqc-rhs (first list)))) 
+            (replaceHelper-Sub lookFor replaceWith (rest list)))
+  ))
+
+(define (replaceHelper lookFor replaceWith listsO)
+  (if (empty? (loi-loc listsO)) listsO
+      
+              ;make replacements in stack and sub
+             (loi (replaceHelper-Stack lookFor replaceWith (loi-loc listsO)) 
+                  (replaceHelper-Sub lookFor replaceWith (loi-los listsO)))
+  
+))
 
 (define (unify loc)
    (unify-helper (loi loc empty))
@@ -304,11 +359,11 @@
          (display "do nothing")
           ]
         [(t-var? (eqc-lhs const))
-         ;(unify-helper (helperFun (shipping)))
+         (unify-helper (replaceHelper ((eqc-lhs const) (eqc-rhs const) shipping)))
          (display "replace all lhs with rhs in shipping (help function needed")
          ]
         [(t-var? (eqc-rhs const))
-         ;(unify-helper (helperFun (shipping)))
+         (unify-helper (replaceHelper ((eqc-rhs const) (eqc-lhs const) shipping)))
          (display "replace all rhs with lhs in shipping")         
          ]
         [(and (t-fun? (eqc-rhs const))
@@ -324,13 +379,14 @@
         [else
          (error "type mismatch")
          ]
-      
       )))
   )
 
 
-(define (infer-type e)
-  0)
+;(define (infer-type e)
+;  (unify (generate-constraints ? (alpha-vary (parse e)))))
+
+
 
 
 ;***************************************************************************************
@@ -347,13 +403,13 @@
 ;********* bin-num-op *****************************
 (test (alpha-vary (bin-num-op + (num 3) (num 4))) (bin-num-op + (num 3) (num 4)))
 ;********* iszero *****************************
-;****(test (alpha-vary (parse '(tempty))) (tempty)) Do we need a tempty in the parser?
+(test (alpha-vary (parse 'tempty)) (tempty))
 ;********* bif *****************************
 (test (alpha-vary-rec (parse '(bif true a 4)) (anEnv 'a 'x4 (mtEnv))) (bif (bool #t) (id 'x4) (num 4)))
 ;********* app *****************************
 ;see the function tests
 ;********* tempty *****************************
-
+(test (alpha-vary (parse 'tempty)) (tempty))
 ;********* tcons *****************************
 (test (alpha-vary (parse '(tcons 4 5))) (tcons (num 4) (num 5)))
 ;********* tfirst *****************************
