@@ -244,7 +244,15 @@
     (with (bound-id bound-body body) 
           0)
     (rec-with (bound-id bound-body body) 0)
-    (fun (arg-id body) 0)
+    (fun (arg-id body) 
+         (local ([define arg-id-id (gensym)]
+                 [define body-id (gensym)]
+                 [define arg-c (generate-constraints arg-id-id arg-id)]
+                 [define body-c (generate-constraints body-id body)])
+           (append
+            (list (eqc (t-var e-id) (t-fun (t-var arg-id-id) (t-var body-id))))
+            arg-c
+            body-c)))
     (app (fun-expr arg-expr) 
          (local ([define fun-id (gensym)]
                  [define arg-id (gensym)]
@@ -460,6 +468,9 @@
 (alpha-vary (parse '(fun x (with y 5 (+ x y)))))
 (alpha-vary (parse '(fun x (- (with x 5 (+ x x)) x)))) ;show shadowing correctly
 (test/exn (alpha-vary (parse '(fun x (+ y 5)))) "no binding")
+
+
+;TESTS FOR CONSTRAINTS
 
 
 
