@@ -351,7 +351,7 @@
             (replaceHelper-Sub lookFor replaceWith (rest list)))
   ))
 
-(define (replaceHelper lookFor replaceWith listsO)
+(define (replaceHelper replaceWith lookFor listsO)
   (if (empty? (loi-loc listsO)) listsO
       
               ;make replacements in stack and sub
@@ -416,7 +416,7 @@
 
 (test (infer-type (parse '5)) (t-num))
 (test (infer-type (parse 'true)) (t-bool))
-(test (infer-type (parse '(tcons 5 1))) (t-list (t-num)))
+(test (infer-type (parse '(tcons 5 tempty))) (t-list (t-num)))
 (test (infer-type (parse '(bif true 5 1))) (t-num))
 (test (infer-type (parse '(iszero 0))) (t-bool))
 (test (infer-type (parse '(+ 5 1))) (t-num))
