@@ -408,25 +408,56 @@
   (test (infer-type (parse 'true)) (t-bool))
   (test (infer-type (parse 'false)) (t-bool))
 (test (t-list? (infer-type (parse 'tempty))) true)
+;tcons
   (test (infer-type (parse '(tcons 5 tempty))) (t-list (t-num)))
 (test/exn (infer-type (parse '(tcons false (tcons 4 tempty)))) "type mismatch")
 (test/exn (infer-type (parse '(tcons true true))) "type mismatch")
 (test (infer-type (parse '(tcons false (tcons true tempty)))) (t-list (t-bool)))
 (test (infer-type (parse '(tcons (tcons 4 tempty) tempty))) (t-list (t-list (t-num))))
+(test/exn (infer-type (parse '(tcons (tcons 4 tempty) (tcons (tcons true tempty) tempty)))) "type mismatch")
+;tfirst
+(test/exn (infer-type (parse '(tfirst false))) "type mismatch")
+  (test/exn (infer-type (parse '(tfirst 0))) "type mismatch")
+(test (infer-type (parse '(tfirst (tcons 4 tempty)))) (t-num))
+(test (infer-type (parse '(tfirst (tcons true tempty)))) (t-bool))
+(test (t-var? (infer-type (parse '(tfirst tempty)))) true)
+;trest
+(test/exn (infer-type (parse '(trest 0))) "type mismatch")
+(test (t-list? (infer-type (parse '(trest tempty)))) true)
+(test (infer-type (parse '(trest (tcons 4 tempty)))) (t-list (t-num)))
+(test (infer-type (parse '(trest (tcons false (tcons true tempty))))) (t-list (t-num)))
+;istempty
+(test/exn (infer-type (parse '(istempty true))) "type mismatch")
+(test (infer-type (parse '(istempty tempty))) (t-bool))
+;bif
   (test (infer-type (parse '(bif true 5 1))) (t-num))
-;(test (in
+(test (infer-type (parse '(bif false false true))) (t-bool))
+(test (infer-type (parse '(bif true tempty (tcons 4 tempty)))) (t-list (t-num)))
+(test/exn (infer-type (parse '(bif 0 4 5))) "type mismatch")
+(test/exn (infer-type (parse '(bif tempty 4 5))) "type mismatch")
+(test/exn (infer-type (parse '(bif true 4 tempty))) "type mismatch")
+;iszero
   (test (infer-type (parse '(iszero 0))) (t-bool))
   (test (infer-type (parse '(iszero (+ 5 (- 6 3))))) (t-bool))
+(test/exn (infer-type (parse '(iszero tempty))) "type mismatch")
+;bin-num-op
   (test (infer-type (parse '(+ 5 1))) (t-num))
   (test (infer-type (parse '(+ (- (- 2 0) (- 0 2)) (* (+ 1 2) (+ 3 4))))) (t-num))
+(test/exn (infer-type (parse '(+ true 5))) "type mismatch")
+(test/exn (infer-type (parse '(+ 5 true))) "type mismatch")
+(test/exn (infer-type (parse '(- false 4))) "type mismatch")
+(test/exn (infer-type (parse '(- 4 false))) "type mismatch")
+(test/exn (infer-type (parse '(* tempty 3))) "type mismatch")
+(test/exn (infer-type (parse '(* 3 tempty))) "type mismatch")
   ;(test (infer-type (parse '(with x 5 x))) (t-num))
   ;(test (infer-type (parse '(rec-with x 5 x))) (t-num))
+;fun
   (test (infer-type (parse '(fun x (+ x 5)))) (t-fun (t-var 'x) (t-num)))
   (test (infer-type (parse '(fun x (iszero 0)))) (t-fun (t-var 'x) (t-bool)))
-  (test/exn (infer-type (parse '(istempty true))) "type mismatch")
-  (test/exn (infer-type (parse '(trest 0))) "type mismatch")
-  (test/exn (infer-type (parse '(tfirst false))) "type mismatch")
-  (test/exn (infer-type (parse '(tfirst 0))) "type mismatch")
+;app
+  (test (infer-type (parse '((fun x (tcons x tempty)) 4))) (t-list (t-num)))
+  
+  
 
 
   
