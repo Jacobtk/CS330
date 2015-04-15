@@ -376,11 +376,11 @@
          (display "do nothing")
           ]
         [(t-var? (eqc-lhs const))
-         (list (unify-helper (replaceHelper (eqc-lhs const) (eqc-rhs const) shipping)) const)
+         (append (unify-helper (replaceHelper (eqc-lhs const) (eqc-rhs const) shipping)) (list const))
          ;(display "replace all lhs with rhs in shipping (help function needed")
          ]
         [(t-var? (eqc-rhs const))
-         (list (unify-helper (replaceHelper (eqc-rhs const) (eqc-lhs const) shipping)) (const))
+         (append (unify-helper (replaceHelper (eqc-rhs const) (eqc-lhs const) shipping)) (list const))
          ;(display "replace all rhs with lhs in shipping")         
          ]
         [(and (t-fun? (eqc-rhs const))
