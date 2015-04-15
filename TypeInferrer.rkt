@@ -409,9 +409,25 @@
                             final-c)))
     ))
 
-(display "start here")
-(newline)
-(infer-type (parse '5))
+
+;*************************************************************************************
+;*********************    Infer-type tests    ****************************************
+;*************************************************************************************
+
+(test (infer-type (parse '5)) (t-num))
+(test (infer-type (parse 'true)) (t-bool))
+(test (infer-type (parse '(tcons 5 1))) (t-list (t-num)))
+(test (infer-type (parse '(bif true 5 1))) (t-num))
+(test (infer-type (parse '(iszero 0))) (t-bool))
+(test (infer-type (parse '(+ 5 1))) (t-num))
+(test (infer-type (parse '(with x 5 x))) (t-num))
+(test (infer-type (parse '(rec-with x 5 x))) (t-num))
+(test (infer-type (parse '(fun x (+ x 5)))) (t-num))
+(test (infer-type (parse '(fun x (iszero (tcons 5 1))))) (t-bool))
+(test (infer-type (parse '(istempty (tcons 4 4)))) (t-bool))
+(test (infer-type (parse '(trest (tcons 4 4)))) (t-list (t-num)))
+(test (infer-type (parse '(tfirst (tcons true false)))) (t-bool))
+(test (infer-type (parse '(tfirst (tcons 1 2)))) (t-num))
 
 ;***************************************************************************************
 ;********************     Alpha-vary tests     *****************************************
