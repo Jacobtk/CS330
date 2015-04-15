@@ -247,11 +247,12 @@
     (fun (arg-id body) 
          (local ([define arg-id-id (gensym)]
                  [define body-id (gensym)]
-                 [define arg-c (generate-constraints arg-id-id arg-id)]
+                 ;[define arg-c (generate-constraints arg-id-id arg-id)]
                  [define body-c (generate-constraints body-id body)])
            (append
-            (list (eqc (t-var e-id) (t-fun (t-var arg-id-id) (t-var body-id))))
-            arg-c
+            (list (eqc (t-var e-id) (t-fun (t-var arg-id-id) (t-var body-id)))
+                  (eqc (t-var arg-id-id) (t-var arg-id)))
+            ;arg-c
             body-c)))
     (app (fun-expr arg-expr) 
          (local ([define fun-id (gensym)]
@@ -472,8 +473,50 @@
 
 
 ;TESTS FOR CONSTRAINTS
-
-
+;num
+(test (generate-constraints 'root (parse 4)) (list (eqc (t-var 'root) (t-num))))
+;bool
+(test (generate-constraints 'root (parse 'true)) (list (eqc (t-var 'root) (t-bool))))
+;id
+(test (generate-constraints 'root (parse 'x)) (list (eqc (t-var 'root) (t-var 'x))))
+;bin-num-op
+(define binConstraints (generate-constraints 'root (parse '(+ 4 5))))
+(test (length binConstraints) 5)
+(test (first binConstraints) (eqc (t-var 'root) (t-num)))
+;more tests??
+;iszero
+(define iszeroConstraints (generate-constraints 'root (parse '(iszero 0))))
+(test (length iszeroConstraints) 3)
+(test (first iszeroConstraints) (eqc (t-var 'root) (t-bool)))
+;bif
+(define bifConstraints (generate-constraints 'root (parse '(bif true 2 3))))
+(test (length bifConstraints) 6)
+;with
+;rec-with
+;fun
+(define funConstraints (generate-constraints 'root (parse '(fun x (+ x 5)))))
+(test (length funConstraints) 7)
+;app
+(define appConstraints (generate-constraints 'root (parse '((fun x (+ x 5)) 3))))
+(test (length appConstraints) 9)
+;tempty
+(define temptyConstraints (generate-constraints 'root (parse 'tempty)))
+(test (length temptyConstraints) 1)
+(test (eqc-lhs (first temptyConstraints)) (t-var 'root))
+(test (t-list? (eqc-rhs (first temptyConstraints))) true)
+;tcons
+(define tconsConstraints (generate-constraints 'root (parse '(tcons 4 tempty))))
+(test (length tconsConstraints) 4)
+;tfirst
+(define tfirstConstraints (generate-constraints 'root (parse '(tfirst tempty))))
+(test (length tfirstConstraints) 3)
+;trest;
+(define trestConstraints (generate-constraints 'root (parse '(trest tempty))))
+(test (length trestConstraints) 3)
+;istempty
+(define istemptyConstraints (generate-constraints 'root (parse '(istempty tempty))))
+(test (length istemptyConstraints) 3)
+(test (first istemptyConstraints) (eqc (t-var 'root) (t-bool)))
 
 
 
