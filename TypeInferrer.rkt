@@ -375,12 +375,12 @@
          (display "do nothing")
           ]
         [(t-var? (eqc-lhs const))
-         (unify-helper (replaceHelper ((eqc-lhs const) (eqc-rhs const) shipping)))
-         (display "replace all lhs with rhs in shipping (help function needed")
+         (list (unify-helper (replaceHelper (eqc-lhs const) (eqc-rhs const) shipping)) const)
+         ;(display "replace all lhs with rhs in shipping (help function needed")
          ]
         [(t-var? (eqc-rhs const))
-         (unify-helper (replaceHelper ((eqc-rhs const) (eqc-lhs const) shipping)))
-         (display "replace all rhs with lhs in shipping")         
+         (list (unify-helper (replaceHelper (eqc-rhs const) (eqc-lhs const) shipping)) (const))
+         ;(display "replace all rhs with lhs in shipping")         
          ]
         [(and (t-fun? (eqc-rhs const))
               (t-fun? (eqc-lhs const)))
@@ -408,8 +408,9 @@
                             final-c)))
     ))
 
-
-
+(display "start here")
+(newline)
+(infer-type (parse '5))
 
 ;***************************************************************************************
 ;********************     Alpha-vary tests     *****************************************
