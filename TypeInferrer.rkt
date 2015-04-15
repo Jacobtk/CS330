@@ -238,8 +238,8 @@
                  [define then-c (generate-constraints then-id then)]
                  [define else-c (generate-constraints else-id else)])
            (append
-            (list (eqc (t-var test-id) (t-bool))
-                  (eqc (t-var e-id) (t-var then-id))
+            (list (eqc (t-var e-id) (t-var then-id))
+                  (eqc (t-var test-id) (t-bool))
                   (eqc (t-var then-id) (t-var else-id)))
             test-c
             then-c
@@ -292,8 +292,8 @@
                    [define list-type (gensym)]
                    [define expr-c (generate-constraints expr-id expr)])
              (append
-              (list (eqc (t-var expr-id) (t-list (t-var list-type)))
-                    (eqc (t-var e-id) (t-list (t-var list-type))))
+              (list (eqc (t-var e-id) (t-list (t-var list-type)))
+                    (eqc (t-var expr-id) (t-list (t-var list-type))))
               expr-c)))
     (istempty (expr) 
               (local ([define expr-id (gensym)]
@@ -307,119 +307,98 @@
     ))
 
 
-(define (findAndReplace lookFor replaceWith typeIn)
-  (cond
-    [(t-var? typeIn)
-     (if (equal? typeIn lookFor)
-         replaceWith
-         typeIn)]
-    [(t-list? typeIn)
-     (if (equal? (t-list-elem typeIn) lookFor)
-         (t-list replaceWith)
-         typeIn)]
-    [(t-fun? typeIn)
-     (t-fun (findAndReplace lookFor replaceWith (t-fun-arg typeIn)) 
-            (findAndReplace lookFor replaceWith (t-fun-result typeIn)))]
-    [#t
-     typeIn] ;everything else just return itself
+
+;typeVar : Type?
+;lookFor : Type?
+;replaceWith : Type?
+(define (replaceType typeVar lookFor replaceWith)
+  (type-case Type typeVar
+    (t-num () typeVar)
+    (t-bool () typeVar)
+    (t-list (elem) 
+            (t-list (replaceType elem lookFor replaceWith)))
+    (t-fun (arg return) 
+           (t-fun (replaceType arg lookFor replaceWith)
+                  (replaceType return lookFor replaceWith)))           
+    (t-var (sym) 
+           (if (equal? lookFor typeVar)
+               replaceWith
+               typeVar))))
     
-    ))
+    
 
+;this function looks through a list of constraints and replaces all instances of lookFor with replaceWith
+;loc : listof Constraint?
+;lookFor : Type?
+;replaceWith : Type?
+(define (findAndReplace loc lookFor replaceWith)
+  (if (empty? loc)
+      empty
+      (local ([define constraint (first loc)])
+        (append (list (eqc (replaceType (eqc-lhs constraint) lookFor replaceWith)
+                           (replaceType (eqc-rhs constraint) lookFor replaceWith)))
+                (findAndReplace (rest loc) lookFor replaceWith)))))
 
-(define (replaceHelper-Stack lookFor replaceWith list)
-  (if (empty? list) list
-      (cons (eqc (findAndReplace lookFor replaceWith (eqc-lhs (first list))) 
-                 (findAndReplace lookFor replaceWith (eqc-rhs (first list)))) 
-            (replaceHelper-Stack lookFor replaceWith (rest list)))
-      ))
+(define (unify-helper loc subs)
+  (if (empty? loc)
+      subs
+      (local ([define constraint (first loc)])
+        (cond [(equal? (eqc-lhs constraint) (eqc-rhs constraint))
+               (unify-helper (rest loc) subs)] ;do nothing, but continue on checking other constraints
+              [(t-var? (eqc-lhs constraint))
+               (unify-helper (findAndReplace (rest loc)
+                                             (eqc-lhs constraint)
+                                             (eqc-rhs constraint))
+                             (append (list constraint)
+                                     (findAndReplace subs
+                                                     (eqc-lhs constraint)
+                                                     (eqc-rhs constraint))))]
+              [(t-var? (eqc-rhs constraint))
+               (unify-helper (findAndReplace (rest loc)
+                                             (eqc-rhs constraint)
+                                             (eqc-lhs constraint))
+                             (append (list (eqc (eqc-rhs constraint) (eqc-lhs constraint)))
+                                     (findAndReplace subs
+                                                     (eqc-rhs constraint)
+                                                     (eqc-lhs constraint))))]
+              [(and (t-fun? (eqc-rhs constraint))
+                    (t-fun? (eqc-lhs constraint)))
+               (unify-helper (append (list (eqc (t-fun-arg (eqc-lhs constraint))
+                                                (t-fun-arg (eqc-rhs constraint)))
+                                           (eqc (t-fun-result (eqc-lhs constraint))
+                                                (t-fun-result (eqc-rhs constraint))))
+                                     (rest loc))
+                             subs)]
+              [(and (t-list? (eqc-lhs constraint))
+                    (t-list? (eqc-rhs constraint)))
+               (unify-helper (append (list (eqc (t-list-elem (eqc-lhs constraint))
+                                                (t-list-elem (eqc-rhs constraint))))
+                                     (rest loc))
+                             subs)]
+              [else
+               (error 'unify "type mismatch")]))))
+              
+(define (unify loc)
+  (unify-helper loc empty))
 
-(define (replaceHelper-Sub lookFor replaceWith list)
-  (if (empty? list) list
-      (cons (eqc (findAndReplace lookFor replaceWith (eqc-lhs (first list))) 
-                 (findAndReplace lookFor replaceWith (eqc-rhs (first list)))) 
-            (replaceHelper-Sub lookFor replaceWith (rest list)))
-      ))
-  
-  (define (replaceHelper lookFor replaceWith listsO)
-    (if (empty? (loi-loc listsO)) listsO
-        
-        ;make replacements in stack and sub
-        (loi (replaceHelper-Stack lookFor replaceWith (loi-loc listsO)) 
-             (replaceHelper-Sub lookFor replaceWith (loi-los listsO)))
-        
-        ))
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  (define (flipMe const)
-    (eqc (eqc-rhs const) (eqc-lhs const))
-    )
-  
-  
-  (define (unify loc)
-    (unify-helper (loi loc empty))
-    )
-  
-  (define (unify-helper listIn)
-    (if (empty? (loi-loc listIn)) ;if list of constraints is empty
-        (loi-los listIn) ;return list of subs
-        ;else
-        (local ([define const (first (loi-loc listIn))]
-                [define shipping (loi (rest (loi-loc listIn)) (loi-los listIn))])
-          (cond
-            [(equal? (eqc-lhs const) (eqc-rhs const))
-             ;do nothing 
-             (unify-helper shipping)
-             ]
-            [(t-var? (eqc-lhs const))
-             (unify-helper (replaceHelper (eqc-lhs const) (eqc-rhs const) (loi (rest (loi-loc listIn)) (append (loi-los listIn) (list const)))))
-             ;(display "replace all lhs with rhs in shipping (help function needed")
-             ]
-            [(t-var? (eqc-rhs const))
-             (unify-helper (replaceHelper (eqc-rhs const) (eqc-lhs const) 
-                                          (loi (rest (loi-loc listIn)) 
-                                               (append (loi-los listIn) (list (flipMe const))))))
-             ;(display "replace all rhs with lhs in shipping")         
-             ]
-            [(and (t-fun? (eqc-rhs const))
-                  (t-fun? (eqc-lhs const)))
-             (unify-helper (loi (append (list (eqc (t-fun-arg (eqc-rhs const))
-                                                   (t-fun-arg (eqc-lhs const)))
-                                              (eqc (t-fun-result (eqc-rhs const))
-                                                   (t-fun-result (eqc-lhs const))))
-                                        (rest (loi-loc listIn)))
-                                (loi-los listIn)))
-             
-             ]
-            [else
-             (error "type mismatch")
-             ]
-            )))
-    )
-  
+(define (findRootConstraint constraints root-id)
+  (local ([define constraint (first constraints)]
+          [define left (eqc-lhs constraint)]
+          [define right (eqc-rhs constraint)])
+    (if (and (t-var? left)
+             (symbol=? (t-var-v left) root-id))
+        right
+        (if (and (t-var? right)
+                 (symbol=? (t-var-v right) root-id))
+            left
+            (findRootConstraint (rest constraints) root-id)))))
+
 ;e (Expr?) -> (Type?)
   ;given an expresion will find the type produced by that expersion
   (define (infer-type e)
     (local ([define root-id (gensym)]
             [define final-c (unify (generate-constraints root-id (alpha-vary e)))])
-      (eqc-rhs (first final-c)))
-      ;(eqc-rhs (first (filter (lambda (x)
-      ;                          (symbol=? root-id
-      ;                                    (eqc-lhs x)))
-      ;                        final-c)))
-      
-      )
-  
+      (findRootConstraint final-c root-id)))  
   
   ;*************************************************************************************
   ;*********************    Infer-type tests    ****************************************
@@ -427,8 +406,15 @@
   
   (test (infer-type (parse '5)) (t-num))
   (test (infer-type (parse 'true)) (t-bool))
-  ;(test (infer-type (parse '(tcons 5 tempty))) (t-list (t-num)))
-  ;(test (infer-type (parse '(bif true 5 1))) (t-num))
+  (test (infer-type (parse 'false)) (t-bool))
+(test (t-list? (infer-type (parse 'tempty))) true)
+  (test (infer-type (parse '(tcons 5 tempty))) (t-list (t-num)))
+(test/exn (infer-type (parse '(tcons false (tcons 4 tempty)))) "type mismatch")
+(test/exn (infer-type (parse '(tcons true true))) "type mismatch")
+(test (infer-type (parse '(tcons false (tcons true tempty)))) (t-list (t-bool)))
+(test (infer-type (parse '(tcons (tcons 4 tempty) tempty))) (t-list (t-list (t-num))))
+  (test (infer-type (parse '(bif true 5 1))) (t-num))
+;(test (in
   (test (infer-type (parse '(iszero 0))) (t-bool))
   (test (infer-type (parse '(iszero (+ 5 (- 6 3))))) (t-bool))
   (test (infer-type (parse '(+ 5 1))) (t-num))
@@ -437,10 +423,10 @@
   ;(test (infer-type (parse '(rec-with x 5 x))) (t-num))
   (test (infer-type (parse '(fun x (+ x 5)))) (t-fun (t-var 'x) (t-num)))
   (test (infer-type (parse '(fun x (iszero 0)))) (t-fun (t-var 'x) (t-bool)))
-  ;(test (infer-type (parse '(istempty true))) (t-bool))
-  ;(test (infer-type (parse '(trest 0))) (t-list (t-num)))
-  ;(test (infer-type (parse '(tfirst false))) (t-bool))
-  ;(test (infer-type (parse '(tfirst 0))) (t-num))
+  (test/exn (infer-type (parse '(istempty true))) "type mismatch")
+  (test/exn (infer-type (parse '(trest 0))) "type mismatch")
+  (test/exn (infer-type (parse '(tfirst false))) "type mismatch")
+  (test/exn (infer-type (parse '(tfirst 0))) "type mismatch")
 
 
   
